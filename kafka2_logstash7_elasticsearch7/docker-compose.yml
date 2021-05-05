@@ -1,0 +1,56 @@
+version: '2.2'
+services:
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.12.1
+    container_name: es01
+    environment:
+      - node.name=es01
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+
+
+  ls01:
+    image: docker.elastic.co/logstash/logstash:7.12.1
+    container_name: ls01
+    environment:
+      ELASTIC_HOST: ls01:9200
+    volumes:
+      - ./pipeline:/usr/share/logstash/pipeline/
+      - ./config:/usr/share/logstash/config/
+    ports:
+      - 5046:5046
+
+
+  zo01:
+    image: wurstmeister/zookeeper:3.4.6
+    container_name: zo01
+    ports:
+      - "2181:2181"
+
+  ka01:
+    image: wurstmeister/kafka:2.13-2.7.0
+    container_name: ka01
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.1.124
+      KAFKA_ZOOKEEPER_CONNECT: zo01:2181
+      # Topic1 will have 1 partition, 1 replica and a cleanup.policy set to compact
+      KAFKA_CREATE_TOPICS: "quickstart-events-topic:1:1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  data01:
+    driver: local
+
